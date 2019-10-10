@@ -68,3 +68,10 @@ class BaseCost(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def model(self):
         pass
+
+
+class BaseFinder(object, metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def single_breakpoint(self, series):
+        pass

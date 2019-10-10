@@ -90,13 +90,14 @@ Code explanation
     :keyprefix: bs-
 
 """
+import abc
 from functools import lru_cache
 from ruptures.base import BaseCost, BaseEstimator
 from ruptures.costs import cost_factory
 from ruptures.utils import pairwise
 
 
-class Binseg(BaseEstimator):
+class BinsegOriginal(BaseEstimator):
 
     """Binary segmentation."""
 
@@ -246,3 +247,27 @@ class Binseg(BaseEstimator):
         """
         self.fit(signal)
         return self.predict(n_bkps=n_bkps, pen=pen, epsilon=epsilon)
+
+
+class Binseg(BinsegOriginal):
+
+    """Binary segmentation."""
+
+    def __init__(self, model="l2", custom_cost=None, min_size=2, jump=5, params=None, custom_finder=None):
+        """Initialize a Binseg instance.
+
+        Args:
+            model (str, optional): segment model, ["l1", "l2", "rbf",...]. Not used if ``'custom_cost'`` is not None.
+            custom_cost (BaseCost, optional): custom cost function. Defaults to None.
+            min_size (int, optional): minimum segment length. Defaults to 2 samples.
+            jump (int, optional): subsample (one every *jump* points). Defaults to 5 samples.
+            params (dict, optional): a dictionary of parameters for the cost instance.
+        Returns:
+            self
+        """
+
+        super().__init__(model, custom_cost, min_size, jump, params)
+        if custom_finder is not None:
+            self._single_bkp = custom_finder
+
+
