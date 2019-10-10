@@ -71,7 +71,11 @@ class BaseCost(object, metaclass=abc.ABCMeta):
 
 
 class BaseFinder(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def single_breakpoint(self, start, end):
+        pass
 
     @abc.abstractmethod
-    def single_breakpoint(self, series):
+    def fit(self, *args, **kwargs):
+        """ To call the segmentation algorithm"""
         pass

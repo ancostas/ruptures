@@ -92,16 +92,19 @@ Code explanation
 """
 import abc
 from functools import lru_cache
-from ruptures.base import BaseCost, BaseEstimator
+from ruptures.base import BaseCost, BaseEstimator, BaseFinder
 from ruptures.costs import cost_factory
 from ruptures.utils import pairwise
 
 
-class BinsegOriginal(BaseEstimator):
+class Binseg(BaseEstimator):
 
     """Binary segmentation."""
 
-    def __init__(self, model="l2", custom_cost=None, min_size=2, jump=5, params=None):
+    finder = None
+    cost = None
+
+    def __init__(self, model="l2", custom_cost=None, min_size=2, jump=5, params=None, custom_finder=None):
         """Initialize a Binseg instance.
 
         Args:
@@ -116,14 +119,16 @@ class BinsegOriginal(BaseEstimator):
             self
         """
 
-        if custom_cost is not None and isinstance(custom_cost, BaseCost):
+        if custom_finder is not None and isinstance(custom_finder, BaseFinder):
+            self.finder = custom_finder
+        elif custom_cost is not None and isinstance(custom_cost, BaseCost):
             self.cost = custom_cost
         else:
             if params is None:
                 self.cost = cost_factory(model=model)
             else:
                 self.cost = cost_factory(model=model, **params)
-        self.min_size = max(min_size, self.cost.min_size)
+        self.min_size = max(min_size, self.finder.min_size if custom_finder is not None else self.cost.min_size)
         self.jump = jump
         self.n_samples = None
         self.signal = None
@@ -170,12 +175,15 @@ class BinsegOriginal(BaseEstimator):
             if not stop:
                 bkps.append(bkp)
                 bkps.sort()
-        partition = {(start, end): self.cost.error(start, end)
+        partition = {(start, end): self.finder.single_breakpoint(start, end)[1] if self.finder is not None else self.cost.error(start, end)
                      for start, end in pairwise([0] + bkps)}
         return partition
 
     def _single_bkp(self, start, end):
         """Return the optimal breakpoint of [start:end] (if it exists)."""
+        if self.finder is not None:
+            return self.finder.single_breakpoint(start, end)
+
         segment_cost = self.cost.error(start, end)
         gain_list = list()
         for bkp in range(start, end, self.jump):
@@ -204,7 +212,7 @@ class BinsegOriginal(BaseEstimator):
         else:
             self.signal = signal
         self.n_samples, _ = self.signal.shape
-        self.cost.fit(signal)
+        self.finder.fit(signal) if self.finder is not None else self.cost.fit(signal)
         self.single_bkp.cache_clear()
 
         return self
@@ -247,27 +255,5 @@ class BinsegOriginal(BaseEstimator):
         """
         self.fit(signal)
         return self.predict(n_bkps=n_bkps, pen=pen, epsilon=epsilon)
-
-
-class Binseg(BinsegOriginal):
-
-    """Binary segmentation."""
-
-    def __init__(self, model="l2", custom_cost=None, min_size=2, jump=5, params=None, custom_finder=None):
-        """Initialize a Binseg instance.
-
-        Args:
-            model (str, optional): segment model, ["l1", "l2", "rbf",...]. Not used if ``'custom_cost'`` is not None.
-            custom_cost (BaseCost, optional): custom cost function. Defaults to None.
-            min_size (int, optional): minimum segment length. Defaults to 2 samples.
-            jump (int, optional): subsample (one every *jump* points). Defaults to 5 samples.
-            params (dict, optional): a dictionary of parameters for the cost instance.
-        Returns:
-            self
-        """
-
-        super().__init__(model, custom_cost, min_size, jump, params)
-        if custom_finder is not None:
-            self._single_bkp = custom_finder
 
 
