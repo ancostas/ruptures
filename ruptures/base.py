@@ -79,3 +79,10 @@ class BaseFinder(object, metaclass=abc.ABCMeta):
     def fit(self, *args, **kwargs):
         """ To call the segmentation algorithm"""
         pass
+
+
+class BaseStopper(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def stop_criterion(self, signal, bkps, finder):
+        """ To call the segmentation algorithm"""
+        pass

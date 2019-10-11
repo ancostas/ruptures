@@ -103,8 +103,9 @@ class Binseg(BaseEstimator):
 
     finder = None
     cost = None
+    stopper = None
 
-    def __init__(self, model="l2", custom_cost=None, min_size=2, jump=5, params=None, custom_finder=None):
+    def __init__(self, model="l2", custom_cost=None, min_size=2, jump=5, params=None, custom_finder=None, custom_stopper=None):
         """Initialize a Binseg instance.
 
         Args:
@@ -119,6 +120,7 @@ class Binseg(BaseEstimator):
             self
         """
 
+        self.stopper = custom_stopper
         if custom_finder is not None and isinstance(custom_finder, BaseFinder):
             self.finder = custom_finder
         elif custom_cost is not None and isinstance(custom_cost, BaseCost):
@@ -161,7 +163,9 @@ class Binseg(BaseEstimator):
             if bkp is None:  # all possible configuration have been explored.
                 break
 
-            if n_bkps is not None:
+            if self.stopper is not None:
+                stop = self.stopper.stop_criterion(self.signal, bkps, self.fit, self.single_bkp)
+            elif n_bkps is not None:
                 if len(bkps) - 1 < n_bkps:
                     stop = False
             elif pen is not None:
@@ -233,7 +237,7 @@ class Binseg(BaseEstimator):
             list: sorted list of breakpoints
         """
         msg = "Give a parameter."
-        assert any(param is not None for param in (n_bkps, pen, epsilon)), msg
+        assert any(param is not None for param in (self.stopper, n_bkps, pen, epsilon)), msg
 
         partition = self._seg(n_bkps=n_bkps, pen=pen, epsilon=epsilon)
         bkps = sorted(e for s, e in partition.keys())
